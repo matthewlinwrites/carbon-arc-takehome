@@ -35,7 +35,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       <h2>Login</h2>
       {error && <ErrorMessage message={error} />}
       <Input
-        label="Username"
+        label="Email"
         type="text"
         value={username}
         onChange={(e) => setUsername(e.target.value)}

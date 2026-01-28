@@ -275,6 +275,11 @@ body {
   color: #6b7280;
 }
 
+.task-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 /* Pagination */
 .pagination {
   display: flex;
