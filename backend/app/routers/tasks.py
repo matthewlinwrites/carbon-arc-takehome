@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 
 from app.models import ActivityLog, Task, TaskStats
+from app.routers.auth import require_auth
 from app.schemas import TaskCreate, TaskUpdate
 from app.storage import storage
 
-router = APIRouter(prefix="/tasks", tags=["tasks"])
+router = APIRouter(prefix="/tasks", tags=["tasks"], dependencies=[Depends(require_auth)])
 
 
 @router.get("", response_model=list[Task])

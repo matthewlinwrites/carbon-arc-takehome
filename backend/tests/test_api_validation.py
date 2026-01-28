@@ -11,6 +11,11 @@ from app.main import app
 from app.storage import storage
 
 
+# Auth token for authenticated requests
+AUTH_TOKEN = "mock-jwt-token-12345"
+AUTH_HEADERS = {"Authorization": f"Bearer {AUTH_TOKEN}"}
+
+
 @pytest.fixture
 def client():
     """Create a test client and clear storage before each test."""
@@ -59,7 +64,7 @@ class TestListTasks:
 
     def test_list_tasks_empty(self, client):
         print("\n=== GET /tasks - Empty list ===")
-        response = client.get("/tasks")
+        response = client.get("/tasks", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -70,10 +75,10 @@ class TestListTasks:
     def test_list_tasks_with_data(self, client):
         print("\n=== GET /tasks - With tasks ===")
         # Create tasks
-        client.post("/tasks", json={"title": "Task 1"})
-        client.post("/tasks", json={"title": "Task 2"})
+        client.post("/tasks", json={"title": "Task 1"}, headers=AUTH_HEADERS)
+        client.post("/tasks", json={"title": "Task 2"}, headers=AUTH_HEADERS)
 
-        response = client.get("/tasks")
+        response = client.get("/tasks", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -84,13 +89,21 @@ class TestListTasks:
         assert "Task 1" in titles and "Task 2" in titles
         print("✓ Returns list of created tasks")
 
+    def test_list_tasks_unauthorized(self, client):
+        print("\n=== GET /tasks - Unauthorized ===")
+        response = client.get("/tasks")
+        print(f"Status: {response.status_code}")
+
+        assert response.status_code == 403, f"Expected 403, got {response.status_code}"
+        print("✓ Returns 403 without auth token")
+
 
 class TestCreateTask:
     """POST /tasks - Create a task"""
 
     def test_create_task(self, client):
         print("\n=== POST /tasks - Create task ===")
-        response = client.post("/tasks", json={"title": "Buy groceries"})
+        response = client.post("/tasks", json={"title": "Buy groceries"}, headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -105,7 +118,7 @@ class TestCreateTask:
 
     def test_create_task_empty_title(self, client):
         print("\n=== POST /tasks - Empty title ===")
-        response = client.post("/tasks", json={"title": ""})
+        response = client.post("/tasks", json={"title": ""}, headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
 
         assert response.status_code == 422, f"Expected 422, got {response.status_code}"
@@ -113,11 +126,19 @@ class TestCreateTask:
 
     def test_create_task_whitespace_title(self, client):
         print("\n=== POST /tasks - Whitespace title ===")
-        response = client.post("/tasks", json={"title": "   "})
+        response = client.post("/tasks", json={"title": "   "}, headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
 
         assert response.status_code == 422, f"Expected 422, got {response.status_code}"
         print("✓ Returns 422 for whitespace-only title")
+
+    def test_create_task_unauthorized(self, client):
+        print("\n=== POST /tasks - Unauthorized ===")
+        response = client.post("/tasks", json={"title": "Test"})
+        print(f"Status: {response.status_code}")
+
+        assert response.status_code == 403, f"Expected 403, got {response.status_code}"
+        print("✓ Returns 403 without auth token")
 
 
 class TestGetTask:
@@ -126,11 +147,11 @@ class TestGetTask:
     def test_get_task(self, client):
         print("\n=== GET /tasks/<id> - Get task detail ===")
         # Create a task first
-        create_resp = client.post("/tasks", json={"title": "Test task"})
+        create_resp = client.post("/tasks", json={"title": "Test task"}, headers=AUTH_HEADERS)
         task_id = create_resp.json()["id"]
         print(f"Created task with id: {task_id}")
 
-        response = client.get(f"/tasks/{task_id}")
+        response = client.get(f"/tasks/{task_id}", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -143,7 +164,7 @@ class TestGetTask:
 
     def test_get_task_not_found(self, client):
         print("\n=== GET /tasks/<id> - Not found ===")
-        response = client.get("/tasks/nonexistent-id")
+        response = client.get("/tasks/nonexistent-id", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -158,12 +179,12 @@ class TestCompleteTask:
     def test_complete_task(self, client):
         print("\n=== PUT /tasks/<id>/complete - Mark as completed ===")
         # Create a task
-        create_resp = client.post("/tasks", json={"title": "Test task"})
+        create_resp = client.post("/tasks", json={"title": "Test task"}, headers=AUTH_HEADERS)
         task_id = create_resp.json()["id"]
         print(f"Created task with id: {task_id}")
         print(f"Initial completed status: {create_resp.json()['completed']}")
 
-        response = client.put(f"/tasks/{task_id}/complete")
+        response = client.put(f"/tasks/{task_id}/complete", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -174,7 +195,7 @@ class TestCompleteTask:
 
     def test_complete_task_not_found(self, client):
         print("\n=== PUT /tasks/<id>/complete - Not found ===")
-        response = client.put("/tasks/nonexistent-id/complete")
+        response = client.put("/tasks/nonexistent-id/complete", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
 
         assert response.status_code == 404, f"Expected 404, got {response.status_code}"
@@ -187,24 +208,24 @@ class TestDeleteTask:
     def test_delete_task(self, client):
         print("\n=== DELETE /tasks/<id> - Delete task ===")
         # Create a task
-        create_resp = client.post("/tasks", json={"title": "Task to delete"})
+        create_resp = client.post("/tasks", json={"title": "Task to delete"}, headers=AUTH_HEADERS)
         task_id = create_resp.json()["id"]
         print(f"Created task with id: {task_id}")
 
-        response = client.delete(f"/tasks/{task_id}")
+        response = client.delete(f"/tasks/{task_id}", headers=AUTH_HEADERS)
         print(f"Delete status: {response.status_code}")
 
         assert response.status_code == 204, f"Expected 204, got {response.status_code}"
 
         # Verify deletion
-        get_resp = client.get(f"/tasks/{task_id}")
+        get_resp = client.get(f"/tasks/{task_id}", headers=AUTH_HEADERS)
         print(f"Get after delete status: {get_resp.status_code}")
         assert get_resp.status_code == 404, "Task should not exist after deletion"
         print("✓ Task deleted successfully")
 
     def test_delete_task_not_found(self, client):
         print("\n=== DELETE /tasks/<id> - Not found ===")
-        response = client.delete("/tasks/nonexistent-id")
+        response = client.delete("/tasks/nonexistent-id", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
 
         assert response.status_code == 404, f"Expected 404, got {response.status_code}"
@@ -216,7 +237,7 @@ class TestTaskStats:
 
     def test_stats_empty(self, client):
         print("\n=== GET /tasks/stats - Empty stats ===")
-        response = client.get("/tasks/stats")
+        response = client.get("/tasks/stats", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -230,16 +251,16 @@ class TestTaskStats:
     def test_stats_with_tasks(self, client):
         print("\n=== GET /tasks/stats - With tasks ===")
         # Create 3 tasks
-        task1 = client.post("/tasks", json={"title": "Task 1"}).json()
-        client.post("/tasks", json={"title": "Task 2"})
-        client.post("/tasks", json={"title": "Task 3"})
+        task1 = client.post("/tasks", json={"title": "Task 1"}, headers=AUTH_HEADERS).json()
+        client.post("/tasks", json={"title": "Task 2"}, headers=AUTH_HEADERS)
+        client.post("/tasks", json={"title": "Task 3"}, headers=AUTH_HEADERS)
         print("Created 3 tasks")
 
         # Complete 1 task
-        client.put(f"/tasks/{task1['id']}/complete")
+        client.put(f"/tasks/{task1['id']}/complete", headers=AUTH_HEADERS)
         print(f"Completed task: {task1['id']}")
 
-        response = client.get("/tasks/stats")
+        response = client.get("/tasks/stats", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -255,11 +276,11 @@ class TestActivityLog:
 
     def test_activity_on_create(self, client):
         print("\n=== GET /tasks/<id>/activity - After create ===")
-        create_resp = client.post("/tasks", json={"title": "Test task"})
+        create_resp = client.post("/tasks", json={"title": "Test task"}, headers=AUTH_HEADERS)
         task_id = create_resp.json()["id"]
         print(f"Created task: {task_id}")
 
-        response = client.get(f"/tasks/{task_id}/activity")
+        response = client.get(f"/tasks/{task_id}/activity", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -272,12 +293,12 @@ class TestActivityLog:
 
     def test_activity_on_complete(self, client):
         print("\n=== GET /tasks/<id>/activity - After complete ===")
-        create_resp = client.post("/tasks", json={"title": "Test task"})
+        create_resp = client.post("/tasks", json={"title": "Test task"}, headers=AUTH_HEADERS)
         task_id = create_resp.json()["id"]
-        client.put(f"/tasks/{task_id}/complete")
+        client.put(f"/tasks/{task_id}/complete", headers=AUTH_HEADERS)
         print(f"Created and completed task: {task_id}")
 
-        response = client.get(f"/tasks/{task_id}/activity")
+        response = client.get(f"/tasks/{task_id}/activity", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Activity entries:")
         for entry in response.json():
@@ -292,14 +313,14 @@ class TestActivityLog:
 
     def test_activity_with_values(self, client):
         print("\n=== GET /tasks/<id>/activity - With old/new values ===")
-        create_resp = client.post("/tasks", json={"title": "Original"})
+        create_resp = client.post("/tasks", json={"title": "Original"}, headers=AUTH_HEADERS)
         task_id = create_resp.json()["id"]
 
         # Update via PATCH to trigger status_changed with values
-        client.patch(f"/tasks/{task_id}", json={"completed": True})
+        client.patch(f"/tasks/{task_id}", json={"completed": True}, headers=AUTH_HEADERS)
         print(f"Created task and changed status via PATCH")
 
-        response = client.get(f"/tasks/{task_id}/activity")
+        response = client.get(f"/tasks/{task_id}/activity", headers=AUTH_HEADERS)
         print(f"Activity entries:")
         for entry in response.json():
             print(f"  - {entry['action']}: old_value={entry.get('old_value')}, new_value={entry.get('new_value')}")
@@ -313,7 +334,7 @@ class TestActivityLog:
 
     def test_activity_not_found(self, client):
         print("\n=== GET /tasks/<id>/activity - Not found ===")
-        response = client.get("/tasks/nonexistent-id/activity")
+        response = client.get("/tasks/nonexistent-id/activity", headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
 
         assert response.status_code == 404
@@ -325,11 +346,11 @@ class TestUpdateTask:
 
     def test_update_title(self, client):
         print("\n=== PATCH /tasks/<id> - Update title ===")
-        create_resp = client.post("/tasks", json={"title": "Original"})
+        create_resp = client.post("/tasks", json={"title": "Original"}, headers=AUTH_HEADERS)
         task_id = create_resp.json()["id"]
         print(f"Created task: {task_id}, title: 'Original'")
 
-        response = client.patch(f"/tasks/{task_id}", json={"title": "Updated"})
+        response = client.patch(f"/tasks/{task_id}", json={"title": "Updated"}, headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -339,11 +360,11 @@ class TestUpdateTask:
 
     def test_update_completed(self, client):
         print("\n=== PATCH /tasks/<id> - Update completed ===")
-        create_resp = client.post("/tasks", json={"title": "Test"})
+        create_resp = client.post("/tasks", json={"title": "Test"}, headers=AUTH_HEADERS)
         task_id = create_resp.json()["id"]
         print(f"Created task: {task_id}, completed: False")
 
-        response = client.patch(f"/tasks/{task_id}", json={"completed": True})
+        response = client.patch(f"/tasks/{task_id}", json={"completed": True}, headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -353,10 +374,10 @@ class TestUpdateTask:
 
     def test_update_both(self, client):
         print("\n=== PATCH /tasks/<id> - Update both fields ===")
-        create_resp = client.post("/tasks", json={"title": "Original"})
+        create_resp = client.post("/tasks", json={"title": "Original"}, headers=AUTH_HEADERS)
         task_id = create_resp.json()["id"]
 
-        response = client.patch(f"/tasks/{task_id}", json={"title": "New Title", "completed": True})
+        response = client.patch(f"/tasks/{task_id}", json={"title": "New Title", "completed": True}, headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")
 
@@ -367,7 +388,7 @@ class TestUpdateTask:
 
     def test_update_not_found(self, client):
         print("\n=== PATCH /tasks/<id> - Not found ===")
-        response = client.patch("/tasks/nonexistent-id", json={"title": "Test"})
+        response = client.patch("/tasks/nonexistent-id", json={"title": "Test"}, headers=AUTH_HEADERS)
         print(f"Status: {response.status_code}")
 
         assert response.status_code == 404

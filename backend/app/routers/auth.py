@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.schemas import LoginRequest, LoginResponse
 
@@ -8,6 +9,19 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 MOCK_USERNAME = "admin"
 MOCK_PASSWORD = "password"
 MOCK_TOKEN = "mock-jwt-token-12345"
+
+# Auth dependency
+security = HTTPBearer()
+
+
+def require_auth(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    """Validate the Bearer token and return it if valid."""
+    if credentials.credentials != MOCK_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+    return credentials.credentials
 
 
 @router.post("/login", response_model=LoginResponse)
